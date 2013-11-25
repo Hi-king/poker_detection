@@ -1,17 +1,11 @@
 #!/usr/bin/env python
 import cv2
 from lib import PokerDetector
+from lib import RForestPokerDetector
 
 FRAMERATE = 10 #FPS
-
-#vid = cv2.VideoCapture(1)
-#vid.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 640)
-#vid.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 480)
-#if not vid.isOpened():
-#    raise Exception("video not opened")
-
-
-detector = PokerDetector([[0, 0, 20, 20]], 0, word_num=50)
+#detector = PokerDetector([[0, 0, 20, 20]], 0, word_num=50, surf_thresh=300, upright=True)
+detector = RForestPokerDetector([[0, 0, 20, 20]], 0, word_num=100, surf_thresh=50, upright=True)
 while True:
     detector.update()
     #vid.grab()
@@ -20,9 +14,13 @@ while True:
     detector.show()
     key = cv2.waitKey(1000/FRAMERATE)
     print key
-    if key == ord('s'):
+    if key == -1:
+        continue
+    elif key == ord('s'):
         detector.register()
-    if key == ord('t'):
+    elif key == ord('t'):
         detector.train()
-    if key == ord('c'):
+    elif key == ord('c'):
         detector.classify()
+    else:
+        detector.register(key)
