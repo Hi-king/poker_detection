@@ -11,11 +11,18 @@ FRAMERATE = 10 #FPS
 #    raise Exception("video not opened")
 
 
-detector = PokerDetector([[0, 0, 20, 20]])
+detector = PokerDetector([[0, 0, 20, 20]], 0, word_num=50)
 while True:
     detector.update()
     #vid.grab()
     #status, frame = vid.read()
     #cv2.imshow("test", frame)
     detector.show()
-    cv2.waitKey(1000/FRAMERATE)
+    key = cv2.waitKey(1000/FRAMERATE)
+    print key
+    if key == ord('s'):
+        detector.register()
+    if key == ord('t'):
+        detector.train()
+    if key == ord('c'):
+        detector.classify()
