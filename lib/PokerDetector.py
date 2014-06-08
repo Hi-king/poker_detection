@@ -15,9 +15,11 @@ class PokerDetector(object):
         self.feature_dict = {}
         self.word_num = word_num
         self.trained = False
+        self.showsize = (100, 100)
 
-    def update(self):
-        status, self.frame = self.vid.read()
+    def update(self, img=None):
+        if img is None: img = self.vid.read()[1]
+        self.frame = img
         self.partial_frames = [self.frame[0:20, 0:20]]
         #self.binarize()
 
@@ -27,9 +29,9 @@ class PokerDetector(object):
 
     def extract_feature(self):
         keypoints, descriptors = self.surf_detector.detectAndCompute(self.frame, None)
-        for keypoint in keypoints:
-            center = map(int, keypoint.pt)
-            cv2.circle(self.frame, tuple(center), 2, (255,0,0), -1)
+        # for keypoint in keypoints:
+        #     center = map(int, keypoint.pt)
+        #     cv2.circle(self.frame, tuple(center), 2, (255,0,0), -1)
         return descriptors
 
     def register(self, key=None):
@@ -83,24 +85,25 @@ class PokerDetector(object):
         self.bof_knn.train(self.bofs, scipy.arange(self.bofs.shape[0], dtype=scipy.float32))
         self.trained = True
 
-    def classify(self, descriptors=None):
-        if not descriptors: descriptors = self.extract_feature()
+    def classify(self, descriptors=None, to_show=False):
+        if descriptors is None: descriptors = self.extract_feature()
         status, results, neighbors, dists = self.bof_knn.find_nearest(self._get_bof(descriptors).T, 1)
-        cv2.imshow("result", self.images[int(results[0])])
+        if to_show: cv2.imshow("result", cv2.resize(self.images[int(results[0])], self.showsize))
+        return results[0]
 
     def show(self):
         if self.trained: self.classify()
-        cv2.imshow("raw", self.frame)
+        cv2.imshow("raw", cv2.resize(self.frame, self.showsize))
         for i in xrange(len(self.partial_frames)):
-            cv2.imshow("im%i" % i, self.partial_frames[i])
+            cv2.imshow("im%i" % i, cv2.resize(self.partial_frames[i], self.showsize))
 
 
 
 
 import sklearn.ensemble
 class RForestPokerDetector(PokerDetector):
-    def __init__(self, partial_frame_coordinates, vidid=0, word_num=100):
-        super(RForestPokerDetector, self).__init__(partial_frame_coordinates, vidid, word_num)
+    def __init__(self, partial_frame_coordinates, vidid=0, word_num=100, surf_thresh=300, upright=False):
+        super(RForestPokerDetector, self).__init__(partial_frame_coordinates, vidid, word_num, surf_thresh, upright)
         self.labels = []
 
     def register(self, key=None):
@@ -150,7 +153,35 @@ class RForestPokerDetector(PokerDetector):
         self.classifier.fit(self.bofs, scipy.array(self.labels))
         self.trained = True
 
-    def classify(self, descriptors=None):
-        if not descriptors: descriptors = self.extract_feature()
+    def classify(self, descriptors=None, to_show=False):
+        if descriptors is None: descriptors = self.extract_feature()
+        if descriptors is None: descriptors = []
         results = self.classifier.predict(self._get_bof(descriptors).T)
-        cv2.imshow("result", self.image_dict[int(results[0])])
+        if to_show: cv2.imshow("result", self.image_dict[int(results[0])])
+        return results[0]
+
+class RForestDensityPokerDetector(RForestPokerDetector):
+    def update(self, img=None, subrect):
+        if img is None: img = self.vid.read()[1]
+        patr_img = img[
+            subrect[0][1]:subrect[1][1],
+            subrect[0][0]:subrect[1][0]
+        ]
+        self.orig_frame = img
+        self.frame = part_img
+        self.partial_frames = [self.frame[0:20, 0:20]]
+        #self.binarize()
+
+    def extract_feature(self):
+        keypoints, descriptors = self.surf_detector.detectAndCompute(self.frame, None)
+
+        orig_gray_img = cv2.cvtColor(self.orig_frame, cv2.cv.CV_BGR2GRAY)
+        gray_img = cv2.cvtColor(self.frame, cv2.cv.CV_BGR2GRAY)
+        s, binarized_img = cv2.threshold(
+            gray_img,
+            float(orig_gray_img.max())/2,
+            255,
+            cv2.cv.CV_THRESH_BINARY
+        )
+        return feature + [scipy.sum(binarized_img)/binarized_img.size]
+
