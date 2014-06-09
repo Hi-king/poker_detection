@@ -10,3 +10,4 @@ class FeatureExtractor(object):
 class TrainedFeatureExtractor(FeatureExtractor):
     def train(self):
         raise NotImplementedError
+

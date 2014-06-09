@@ -9,7 +9,7 @@ import collections
 script_path = os.path.dirname(__file__)
 script_path = script_path if len(script_path) else "."
 sys.path.append(script_path+"/..")
-from lib import RForestPokerDetector
+from lib import RForestPokerDetector, RForestDensityPokerDetector
 
 DELIMITER = ","
 
@@ -87,7 +87,7 @@ if __name__=='__main__':
 
     def calib_rect(img):
         width, height = img.shape[:2]
-        subrect[1] = (height, width)
+        subrect = [(0, 0), (height, width)]
         cv2.imshow("tmp", img)
         param = {}
         param["img"] = img

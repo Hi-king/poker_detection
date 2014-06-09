@@ -4,8 +4,9 @@ __email__ = 'hikingko1@gmail.com'
 DetectorBuilder takes trainingset and yield Detector
 """
 from featureextractor import FeatureExtractor
+import cv2
 
-class DetectorBuilder(object):
+class Detector(object):
     def __init__(self, classifier, raw_extractors=[], trained_extractors=[]):
         """
         :type raw_extractors: [FeatureExtractor]
@@ -13,8 +14,10 @@ class DetectorBuilder(object):
         """
         self.raw_extractors = raw_extractors
         self.trained_extractors = trained_extractors
+        self.detector = None
 
-    def update_trainset(self, raw_feature):
+    def update(self, raw_feature):
+        #for extractor in trained_extractors:
         raise NotImplementedError
 
     def get_classifier(self):
@@ -23,7 +26,21 @@ class DetectorBuilder(object):
         """
         raise NotImplementedError
 
-class Detector(object):
-    def extract_feature(self, raw_feature):
-        return map(lambda x: x.extract_feature(raw_feature), self.raw_extractors+self.trained_extractors)
+    def train(self, raw_feature):
+        raise NotImplementedError
 
+    def classify(self):
+        if self.detector is None: raise "should be trained before classify"
+        raise NotImplementedError
+
+
+class BagofFeaturesDetector(Detector):
+    def __init__(self, raw_extractors=[]):
+        self.raw_extractors = raw_extractors
+        self.teacher_vectors = []
+
+    def update(self, raw_feature, classid):
+        self.teacher_vectors.append(reduce(lambda x,y: x+y, [extractor.extract_feature(raw_feature) for extractor in self.raw_extractors]))
+
+    def train(self):
+        raise NotImplementedError
