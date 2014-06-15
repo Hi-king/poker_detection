@@ -6,6 +6,8 @@ DetectorBuilder takes trainingset and yield Detector
 from featureextractor import FeatureExtractor
 import cv2
 import scipy
+import sklearn.ensemble
+
 
 class Detector(object):
     def train(self, raw_feature):
@@ -14,6 +16,7 @@ class Detector(object):
     def classify(self):
         if self.detector is None: raise "should be trained before classify"
         raise NotImplementedError
+
 
 class OnlineDetector(Detector):
     def __init__(self, classifier, raw_extractors=[], trained_extractors=[]):
@@ -29,14 +32,82 @@ class OnlineDetector(Detector):
         #for extractor in trained_extractors:
         raise NotImplementedError
 
+
 class StaticDetector(Detector):
     def train(self, raw_features):
         raise NotImplementedError
 
+
+class RFDetector(Detector):
+    class _RFDetector(StaticDetector):
+        def __init__(self, raw_features, labels, n_estimators=100):
+            self.classifier = None
+            self.train(raw_features, labels)
+
+        def train(self, raw_features, labels, n_estimators=100):
+            self.classifier = sklearn.ensemble.RandomForestClassifier(n_estimators=n_estimators)
+            self.classifier.fit(raw_features, scipy.array(labels))
+
+        def classify(self, raw_feature):
+            results = self.classifier.predict(raw_feature)
+            return results[0]
+
+
+    def __init__(self, raw_extractor):
+        """
+        :type raw_extractor: FeatureExtractor
+        """
+        self.raw_extractor = raw_extractor
+        self.teacher_vectors = []
+        self.raw_vectors = []
+        self.classifier = None
+        self.key_dict = {}
+        self.id_dict = []
+        self.labels = []
+
+    def _set_key(self, key):
+        if self.key_dict.has_key(key):
+            return self.key_dict[key]
+        else:
+            self.id_dict.append(key)
+            self.key_dict[key] = len(self.id_dict)-1
+            return self.key_dict[key]
+
+    def update(self, raw_feature, key):
+        """
+        :type raw_feature: [float]
+        :type key: str
+        """
+        self.raw_extractor.update(raw_feature)
+        #self.teacher_vectors.append(self._extract_raw_feature(raw_feature))
+        self.raw_vectors.append(raw_feature)
+        self.labels.append(self._set_key(key))
+
+    def train(self):
+        for vector in self.raw_vectors:
+            self.raw_extractor.update(vector)
+        self.raw_extractor.train()
+        for vector in self.raw_vectors:
+            self.teacher_vectors.append(self._extract_raw_feature(vector))
+        self.classifier = self._RFDetector(self.teacher_vectors, self.labels)
+
+    def classify(self, raw_feature):
+        if self.classifier is None:
+            raise Exception("should be trained before classify")
+        return self.id_dict[self.classifier.classify(raw_feature)]
+
+    def _extract_raw_feature(self, raw_feature):
+        """
+        :raw_feature: [float]
+        :return: [[float]]
+        """
+        return self.raw_extractor.extract_feature(raw_feature)
+
 class BagofFeaturesDetector(OnlineDetector):
     class KmeansClassifier(StaticDetector):
-        def __init__(self, word_num=10):
+        def __init__(self, raw_features, word_num=10):
             self.word_num = word_num
+            self.train(raw_features)
 
         def train(self, raw_features):
             #print scipy.array(raw_features).dims
@@ -72,11 +143,11 @@ class BagofFeaturesDetector(OnlineDetector):
         self.teacher_vectors += self._extract_raw_feature(raw_feature)
 
     def train(self):
-        print "train"
-        self.classifier = BagofFeaturesDetector.KmeansClassifier(self.word_num)
-        self.classifier.train(self.teacher_vectors)
+        self.classifier = BagofFeaturesDetector.KmeansClassifier(self.teacher_vectors, word_num=self.word_num)
 
     def extract_feature(self, raw_feature):
+        if self.classifier is None:
+            raise Exception("should be trained before classify")
         rawbof = scipy.zeros(self.word_num, dtype=scipy.float32)
         for each_feature in self._extract_raw_feature(raw_feature):
             classid = self.classifier.classify(self._extract_raw_feature(raw_feature))
