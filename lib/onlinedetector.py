@@ -103,6 +103,13 @@ class RFDetector(Detector):
         """
         return self.raw_extractor.extract_feature(raw_feature)
 
+
+class RFProbabilityDetector(RFDetector):
+    def classify(self, raw_feature):
+        #TODO: return probabilitydict
+        raise NotImplementedError
+
+
 class BagofFeaturesDetector(OnlineDetector):
     class KmeansClassifier(StaticDetector):
         def __init__(self, raw_features, word_num=10):
