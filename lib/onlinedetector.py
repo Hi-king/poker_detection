@@ -10,7 +10,7 @@ import sklearn.ensemble
 
 
 class Detector(object):
-    def train(self, raw_feature):
+    def train(self):
         raise NotImplementedError
 
     def classify(self):

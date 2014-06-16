@@ -161,9 +161,12 @@ class RForestPokerDetector(PokerDetector):
         return results[0]
 
 class RForestDensityPokerDetector(RForestPokerDetector):
-    def update(self, img=None, subrect):
+    def update(self, img=None, subrect=None):
         if img is None: img = self.vid.read()[1]
-        patr_img = img[
+        if subrect is None:
+            width, height = img.shape[:2]
+            subrect = [(0, 0), (height, width)]
+        part_img = img[
             subrect[0][1]:subrect[1][1],
             subrect[0][0]:subrect[1][0]
         ]
@@ -184,4 +187,3 @@ class RForestDensityPokerDetector(RForestPokerDetector):
             cv2.cv.CV_THRESH_BINARY
         )
         return feature + [scipy.sum(binarized_img)/binarized_img.size]
-
