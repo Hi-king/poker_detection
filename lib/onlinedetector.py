@@ -7,6 +7,7 @@ from featureextractor import FeatureExtractor
 import cv2
 import scipy
 import sklearn.ensemble
+import sklearn.cluster
 
 
 class Detector(object):
@@ -42,11 +43,13 @@ class RFDetector(Detector):
     class _RFDetector(StaticDetector):
         def __init__(self, raw_features, labels, n_estimators=100):
             self.classifier = None
-            self.train(raw_features, labels)
+            self.train(raw_features, labels, n_estimators)
 
         def train(self, raw_features, labels, n_estimators=100):
+            ns, nf = scipy.concatenate(raw_features, axis=1).T.shape
+            #scipy.array(labels).shape
             self.classifier = sklearn.ensemble.RandomForestClassifier(n_estimators=n_estimators)
-            self.classifier.fit(raw_features, scipy.array(labels))
+            self.classifier.fit(scipy.concatenate(raw_features, axis=1).T, scipy.array(labels))
 
         def classify(self, raw_feature):
             results = self.classifier.predict(raw_feature)
@@ -78,14 +81,15 @@ class RFDetector(Detector):
         :type raw_feature: [float]
         :type key: str
         """
-        self.raw_extractor.update(raw_feature)
+        self.raw_extractor.update(raw_feature, key)
         #self.teacher_vectors.append(self._extract_raw_feature(raw_feature))
         self.raw_vectors.append(raw_feature)
         self.labels.append(self._set_key(key))
 
     def train(self):
-        for vector in self.raw_vectors:
-            self.raw_extractor.update(vector)
+        print "train"
+        for vector, key in zip(self.raw_vectors, self.labels):
+            self.raw_extractor.update(vector, key)
         self.raw_extractor.train()
         for vector in self.raw_vectors:
             self.teacher_vectors.append(self._extract_raw_feature(vector))
@@ -94,7 +98,7 @@ class RFDetector(Detector):
     def classify(self, raw_feature):
         if self.classifier is None:
             raise Exception("should be trained before classify")
-        return self.id_dict[self.classifier.classify(raw_feature)]
+        return self.id_dict[self.classifier.classify(self._extract_raw_feature(raw_feature).T)]
 
     def _extract_raw_feature(self, raw_feature):
         """
@@ -118,20 +122,24 @@ class BagofFeaturesDetector(OnlineDetector):
 
         def train(self, raw_features):
             #print scipy.array(raw_features).dims
-            print scipy.array(raw_features, dtype=scipy.float32)
-            status, labels, centroids = cv2.kmeans(scipy.array(raw_features, dtype=scipy.float32),
-                                                 self.word_num,
-                                                 (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0),
-                                                 10,
-                                                 cv2.KMEANS_RANDOM_CENTERS)
-            classes = scipy.arange(len(centroids), dtype=scipy.float32)
-            self.feature_knn = cv2.KNearest()
-            self.feature_knn.train(centroids, classes)
+            #print scipy.array(raw_features, dtype=scipy.float32)
+            # status, labels, centroids = cv2.kmeans(scipy.array(raw_features, dtype=scipy.float32),
+            #                                      self.word_num,
+            #                                      (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0),
+            #                                      10,
+            #                                      cv2.KMEANS_RANDOM_CENTERS)
+            # print centroids
+            # classes = scipy.arange(len(centroids), dtype=scipy.float32)
+            # self.feature_knn = cv2.KNearest()
+            # self.feature_knn.train(centroids, classes)
+            self.classifier = sklearn.cluster.KMeans(self.word_num)
+            self.classifier.fit(raw_features)
 
         def classify(self, raw_feature):
-            print scipy.array(raw_feature)
-            status, results, neighbors, dists = self.feature_knn.find_nearest(scipy.matrix(raw_feature, dtype=scipy.float32), 1)
-            return int(results[0])
+            # status, results, neighbors, dists = self.feature_knn.find_nearest(scipy.matrix(raw_feature, dtype=scipy.float32), 1)
+            # print results
+            result = self.classifier.predict(raw_feature)
+            return result
 
     def __init__(self, raw_extractor, word_num=10):
         """
@@ -146,19 +154,23 @@ class BagofFeaturesDetector(OnlineDetector):
         """
         :raw_feature: [float]
         """
-        print self._extract_raw_feature(raw_feature)
         self.teacher_vectors += self._extract_raw_feature(raw_feature)
 
     def train(self):
+        print "train"
         self.classifier = BagofFeaturesDetector.KmeansClassifier(self.teacher_vectors, word_num=self.word_num)
+        print "done"
 
     def extract_feature(self, raw_feature):
+        print "extract_feature %d" % len(self._extract_raw_feature(raw_feature))
         if self.classifier is None:
             raise Exception("should be trained before classify")
         rawbof = scipy.zeros(self.word_num, dtype=scipy.float32)
+        print "go   "
         for each_feature in self._extract_raw_feature(raw_feature):
             classid = self.classifier.classify(self._extract_raw_feature(raw_feature))
-            rawbof[classid] += 1
+            rawbof[classid] += 1.0
+            print rawbof
         rawbof = rawbof.reshape(rawbof.shape[0], 1)
         return rawbof/scipy.sum(rawbof)
 

@@ -142,7 +142,6 @@ class RForestPokerDetector(PokerDetector):
         #self.feature_knn.train(self.centers, classes, 0, False, 1)
         self.bofs = scipy.concatenate(tuple([self._get_bof(feature) for feature in self.features]), axis=1)
         #self.bof_knn = cv2.KNearest(self.bofs, scipy.arange(self.K, dtype=scipy.float32), 0, False, 1)
-
         self.bofs = self.bofs.T
 
     def train(self):

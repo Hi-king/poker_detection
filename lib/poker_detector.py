@@ -11,8 +11,11 @@ class PokerDetector(onlinedetector.Detector):
         RF_classifier = onlinedetector.RFDetector(BoF_extractor)
         self.classifier = RF_classifier
 
-    def update(self, raw_img):
-        self.classifier.update(raw_img)
+    def update(self, raw_img, key):
+        self.classifier.update(raw_img, key)
+
+    def train(self):
+        self.classifier.train()
 
     def classify(self, raw_img):
         return self.classifier.classify(raw_img)
