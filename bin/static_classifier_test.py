@@ -55,7 +55,6 @@ if __name__=='__main__':
     def on_mouse_event(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             param["subrect"][0] = (x, y)
-            print x,y
         if event == cv2.EVENT_RBUTTONDOWN:
             param["subrect"][1] = (x, y)
         if event == cv2.EVENT_RBUTTONDOWN or event == cv2.EVENT_LBUTTONDOWN:
