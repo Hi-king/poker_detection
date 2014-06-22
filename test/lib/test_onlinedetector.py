@@ -15,7 +15,9 @@ class BagofFeaturesDetectorTest(unittest.TestCase):
         detector = BagofFeaturesDetector(word_num=2, raw_extractor=DummyExtractor())
         detector.update([1], 1)
         detector.update([2], 2)
+        print "BOF train ..."
         detector.train()
+        print "BOF train done"
         print detector.extract_feature([1])
         print detector.extract_feature([2])
         self.assertNotEqual(detector.extract_feature([1])[0], detector.extract_feature([2])[0])
