@@ -39,6 +39,25 @@ class StaticDetector(Detector):
         raise NotImplementedError
 
 
+class DetectorCombinator(Detector):
+    def __init__(self, detectors):
+        """
+        :type detectors: [Detector]
+        """
+        self.detectors = detectors
+
+    def update(self, raw_feature, key):
+        for detector in self.detectors:
+            detector.train(raw_feature, key)
+
+    def train(self):
+        for detector in self.detectors:
+            detector.train()
+
+    def extract_feature(self, raw_feature):
+        return scipy.hstack([detector.extract_feature(raw_feature) for detector in self.detectors])
+
+
 class RFDetector(Detector):
     class _RFDetector(StaticDetector):
         def __init__(self, raw_features, labels, n_estimators=100):
@@ -46,7 +65,7 @@ class RFDetector(Detector):
             self.train(raw_features, labels, n_estimators)
 
         def train(self, raw_features, labels, n_estimators=100):
-            ns, nf = scipy.concatenate(raw_features, axis=1).T.shape
+            # ns, nf = scipy.concatenate(raw_features, axis=1).T.shape
             #scipy.array(labels).shape
             print("RF train ...")
             self.classifier = sklearn.ensemble.RandomForestClassifier(n_estimators=n_estimators)
@@ -168,7 +187,7 @@ class BagofFeaturesDetector(OnlineDetector):
         :type raw_extractor: FeatureExtractor
         """
         self.raw_extractor = raw_extractor
-        self.teacher_vectors = []
+        self.teacher_vectors = None
         self.word_num = word_num
         self.n_jobs = n_jobs
         self.classifier = None
@@ -177,7 +196,10 @@ class BagofFeaturesDetector(OnlineDetector):
         """
         :raw_feature: [float]
         """
-        self.teacher_vectors += self._extract_raw_feature(raw_feature)
+        if self.teacher_vectors is None:
+            self.teacher_vectors = self._extract_raw_feature(raw_feature)
+        else:
+            self.teacher_vectors = scipy.vstack((self.teacher_vectors, self._extract_raw_feature(raw_feature)))
 
     def train(self):
         print "train"
