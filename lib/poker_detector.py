@@ -19,3 +19,6 @@ class PokerDetector(onlinedetector.Detector):
 
     def classify(self, raw_img):
         return self.classifier.classify(raw_img)
+
+    def classify_proba(self, raw_img):
+        return self.classifier.classify_proba(raw_img)

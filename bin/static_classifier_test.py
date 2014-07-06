@@ -26,7 +26,7 @@ if __name__=='__main__':
     #detector = RForestPokerDetector([[0, 0, 20, 20]], 0, word_num=1000, surf_thresh=50, upright=False)
     #suite_detector = RForestPokerDetector([[0, 0, 20, 20]], 0, word_num=1000, surf_thresh=50, upright=False)
     #number_detector = RForestDensityPokerDetector([[0, 0, 20, 20]], 0, word_num=1000, surf_thresh=50, upright=False)
-    number_detector = PokerDetector(word_num=1000, surf_thresh=100)
+    number_detector = PokerDetector(word_num=100, surf_thresh=100)
 
     ##train
     classnames = []

@@ -57,6 +57,11 @@ class RFDetector(Detector):
             results = self.classifier.predict(raw_feature)
             return results[0]
 
+        def classify_proba(self, raw_feature):
+            probas = self.classifier.predict_proba(raw_feature)
+            classid = scipy.argmax(probas)
+            return classid, probas[0, classid]
+
 
     def __init__(self, raw_extractor, n_estimators=100):
         """
@@ -103,6 +108,12 @@ class RFDetector(Detector):
             raise Exception("should be trained before classify")
         return self.id_dict[self.classifier.classify(self._extract_raw_feature(raw_feature).T)]
 
+    def classify_proba(self, raw_feature):
+        if self.classifier is None:
+            raise Exception("should be trained before classify")
+        classid, proba = self.classifier.classify_proba(self._extract_raw_feature(raw_feature).T)
+        return self.id_dict[classid], proba
+
     def _extract_raw_feature(self, raw_feature):
         """
         :raw_feature: [float]
@@ -137,7 +148,7 @@ class BagofFeaturesDetector(OnlineDetector):
             # self.feature_knn = cv2.KNearest()
             # self.feature_knn.train(centroids, classes)
             print "BOF train ..."
-            print len(raw_features), "sample"
+            #print len(raw_features), "sample"
             #self.classifier = sklearn.cluster.KMeans(self.word_num, n_jobs=self.n_jobs)
             #self.classifier = sklearn.cluster.KMeans(self.word_num)
             self.classifier = sklearn.cluster.MiniBatchKMeans(self.word_num)
@@ -174,7 +185,7 @@ class BagofFeaturesDetector(OnlineDetector):
         print "done"
 
     def extract_feature(self, raw_feature):
-        print "extract_feature %d" % len(self._extract_raw_feature(raw_feature))
+        #print "extract_feature %d" % len(self._extract_raw_feature(raw_feature))
         if self.classifier is None:
             raise Exception("should be trained before classify")
         #rawbof2 = scipy.zeros(self.word_num, dtype=scipy.float32)
@@ -184,15 +195,20 @@ class BagofFeaturesDetector(OnlineDetector):
         #    #print classid
         #    rawbof2[classid] += 1.0
         #    #print rawbof2
-        rawbof = scipy.zeros(self.word_num, dtype=scipy.float32)
+        rawbof = scipy.zeros(self.word_num+1, dtype=scipy.float32)
         raw_extracted_feature = self._extract_raw_feature(raw_feature)
         classids = self.classifier.classify(raw_extracted_feature)
         for classid in classids:
             rawbof[classid] += 1.0
-        print rawbof
+        #print rawbof
 
         rawbof = rawbof.reshape(rawbof.shape[0], 1)
-        return rawbof/scipy.sum(rawbof)
+        sumall = scipy.sum(rawbof)
+        if sumall > 0:
+            rawbof /= sumall
+            rawbof[-1] = len(classids)
+        return rawbof
+
 
     def _extract_raw_feature(self, raw_feature):
         """
